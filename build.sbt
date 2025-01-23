@@ -54,6 +54,9 @@ lazy val client = (project in file("client")) settings(
     "org.apache.spark" %% "spark-catalyst" % sparkVersion % "test" classifier "tests",
     "org.apache.spark" %% "spark-core" % sparkVersion % "test" classifier "tests",
     "org.apache.spark" %% "spark-sql" % sparkVersion % "test" classifier "tests",
+    "net.java.dev.jna" % "jna" % "5.13.0", 
+    "net.java.dev.jna" % "jna-platform" % "5.13.0",
+    "com.azure" % "azure-identity" % "1.8.1",
     "org.scalatest" %% "scalatest" % "3.2.3" % "test",
     "org.scalatestplus" %% "mockito-4-11" % "3.2.18.0" % "test"
   ),
