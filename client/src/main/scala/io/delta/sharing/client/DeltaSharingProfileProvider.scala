@@ -187,7 +187,7 @@ private[sharing] class DeltaSharingFileProfileProvider(
 
   val profile = {
     val profile = try {
-      JsonUtils.fromJson[DeltaSharingProfile](IOUtils.toString(file, UTF_8))
+      JsonUtils.fromJson[DeltaSharingProfile](file, UTF_8)
     } finally {
       input.close()
     }
