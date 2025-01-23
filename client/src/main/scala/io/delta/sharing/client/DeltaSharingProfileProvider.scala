@@ -19,8 +19,6 @@ package io.delta.sharing.client
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Locale
 
-import com.azure.identity.DefaultAzureCredentialBuilder
-import com.azure.security.keyvault.secrets.SecretClientBuilder
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
@@ -179,46 +177,20 @@ trait DeltaSharingProfileProvider {
 }
 
 /**
- * Azure Key Vault client
- * file systems.
- */
-object AzureKeyVaultClient {
-  def getSecret(keyVaultUrl: String, secretName: String): String = {
-    try {
-      val secretClient = new SecretClientBuilder()
-        .vaultUrl(keyVaultUrl)
-        .credential(new DefaultAzureCredentialBuilder()
-          .build()
-        )
-        .buildClient()
-
-      val secret = secretClient.getSecret(secretName)
-      secret.getValue
-    } catch {
-      case e: Exception =>
-        throw new RuntimeException(
-          s"Failed to retrieve secret '$secretName' from Azure Key Vault at $keyVaultUrl", e)
-    }
-  }
-}
-
-/**
- * Load [[DeltaSharingProfile]] from a Azure Key Vault. `conf` should be provided to load the file from remote
+ * Load [[DeltaSharingProfile]] from a file. `conf` should be provided to load the file from remote
  * file systems.
  */
 private[sharing] class DeltaSharingFileProfileProvider(
     conf: Configuration,
     file: String) extends DeltaSharingProfileProvider {
 
-  // Split "file" into Key Vault URL and secret name
-  private val Array(keyVaultUrl, secretName) = file.split(";", 2)
-
-  // Use AzureKeyVaultClient to retrieve the secret
-  private val secretContent = AzureKeyVaultClient.getSecret(keyVaultUrl, secretName)
-
-  // Parse the retrieved secret
   val profile = {
-    val profile = JsonUtils.fromJson[DeltaSharingProfile](secretContent)
+    val input = new Path(file).getFileSystem(conf).open(new Path(file))
+    val profile = try {
+      JsonUtils.fromJson[DeltaSharingProfile](IOUtils.toString(input, UTF_8))
+    } finally {
+      input.close()
+    }
 
     profile.validate()
 
