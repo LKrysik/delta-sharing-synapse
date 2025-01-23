@@ -176,8 +176,9 @@ trait DeltaSharingProfileProvider {
   }
 }
 
+
 /**
- * Load [[DeltaSharingProfile]] from a file. `conf` should be provided to load the file from remote
+ * Load [[DeltaSharingProfile]] from a Azure Key Vault. `conf` should be provided to load the file from remote
  * file systems.
  */
 private[sharing] class DeltaSharingFileProfileProvider(
@@ -185,9 +186,8 @@ private[sharing] class DeltaSharingFileProfileProvider(
     file: String) extends DeltaSharingProfileProvider {
 
   val profile = {
-    val input = new Path(file).getFileSystem(conf).open(new Path(file))
     val profile = try {
-      JsonUtils.fromJson[DeltaSharingProfile](IOUtils.toString(input, UTF_8))
+      JsonUtils.fromJson[DeltaSharingProfile](IOUtils.toString(file, UTF_8))
     } finally {
       input.close()
     }
