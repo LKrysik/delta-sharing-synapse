@@ -183,13 +183,14 @@ trait DeltaSharingProfileProvider {
  * file systems.
  */
 object AzureKeyVaultClient {
-
   def getSecret(keyVaultUrl: String, secretName: String): String = {
     try {
-
       val secretClient = new SecretClientBuilder()
         .vaultUrl(keyVaultUrl)
-        .credential(new DefaultAzureCredentialBuilder().build())
+        .credential(new DefaultAzureCredentialBuilder()
+          .excludeIntelliJCredential()
+          .build()
+        )
         .buildClient()
 
       val secret = secretClient.getSecret(secretName)
