@@ -19,6 +19,7 @@ package io.delta.sharing.client
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Locale
 
+
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.{DeserializationContext, JsonDeserializer}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
@@ -27,6 +28,9 @@ import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.spark.delta.sharing.TableRefreshResult
+
+import com.azure.identity.DefaultAzureCredentialBuilder
+import com.azure.security.keyvault.secrets.SecretClientBuilder
 
 import io.delta.sharing.client.DeltaSharingProfile.{validateNotNullAndEmpty, BEARER_TOKEN,
   OAUTH_CLIENT_CREDENTIALS}
@@ -177,20 +181,51 @@ trait DeltaSharingProfileProvider {
 }
 
 /**
- * Load [[DeltaSharingProfile]] from a file. `conf` should be provided to load the file from remote
+ * Azure Key Vault client
+ * file systems.
+ */
+object AzureKeyVaultClient {
+
+  private val secretClient = new SecretClientBuilder()
+    .vaultUrl("") // Vault URL will be set dynamically
+    .credential(new DefaultAzureCredentialBuilder().build())
+    .buildClient()
+
+  def getSecret(keyVaultUrl: String, secretName: String): String = {
+    try {
+      // Set the vault URL dynamically
+      secretClient.getVaultUrl()
+      secretClient.setVaultUrl(keyVaultUrl)
+      
+      // Retrieve the secret
+      val secret = secretClient.getSecret(secretName)
+      secret.getValue
+    } catch {
+      case e: Exception =>
+        throw new RuntimeException(s"Failed to retrieve secret '$secretName' from Azure Key Vault at $keyVaultUrl", e)
+    }
+  }
+}
+
+
+
+/**
+ * Load [[DeltaSharingProfile]] from a Azure Key Vault. `conf` should be provided to load the file from remote
  * file systems.
  */
 private[sharing] class DeltaSharingFileProfileProvider(
     conf: Configuration,
     file: String) extends DeltaSharingProfileProvider {
 
+  // Split "file" into Key Vault URL and secret name
+  private val Array(keyVaultUrl, secretName) = file.split(";", 2)
+
+  // Use AzureKeyVaultClient to retrieve the secret
+  private val secretContent = AzureKeyVaultClient.getSecret(keyVaultUrl, secretName)
+
+  // Parse the retrieved secret
   val profile = {
-    val input = new Path(file).getFileSystem(conf).open(new Path(file))
-    val profile = try {
-      JsonUtils.fromJson[DeltaSharingProfile](IOUtils.toString(input, UTF_8))
-    } finally {
-      input.close()
-    }
+    val profile = JsonUtils.fromJson[DeltaSharingProfile](secretContent)
 
     profile.validate()
 
