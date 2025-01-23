@@ -188,7 +188,6 @@ object AzureKeyVaultClient {
       val secretClient = new SecretClientBuilder()
         .vaultUrl(keyVaultUrl)
         .credential(new DefaultAzureCredentialBuilder()
-          .excludeIntelliJCredential()
           .build()
         )
         .buildClient()
